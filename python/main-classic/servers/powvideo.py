@@ -51,8 +51,9 @@ def get_video_url(page_url, premium=False, user="", password="", video_password=
     data = httptools.downloadpage(page_url, post, headers=_cookie).data
 
     for list in scrapertools.find_multiple_matches(data, '_[^=]+=(\[[^\]]+\]);'):
-        key = "".join(eval(list)[7:9])
-        if len(list) >= 703: break
+        if len(list) == 703 or len(list) == 711:
+            key = "".join(eval(list)[7:9])
+            break
     if key.startswith("embed"):
         key = key[6:]+key[:6]
     matches = scrapertools.find_single_match(data, "<script type=[\"']text/javascript[\"']>(eval.*?)</script>")
