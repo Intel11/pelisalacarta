@@ -142,7 +142,7 @@ def peliculas(item):
 
     # Descarga la página
     data = httptools.downloadpage(item.url).data
-    patron  = '(?s)class="(?:result-item|item movies)">.*?.*?<img src="([^"]+)'
+    patron  = '(?s)class="(?:result-item|item movies)">.*?<img src="([^"]+)'
     patron += '.*?alt="([^"]+)"'
     patron += '(.*?)'
     patron += 'href="([^"]+)"'
@@ -152,7 +152,7 @@ def peliculas(item):
         calidad = scrapertools.find_single_match(calidad, '.*?quality">([^<]+)')
         try:
             fulltitle = scrapedtitle
-            year = scrapedyear
+            year = scrapedyear.replace("&nbsp;","")
             if "/" in fulltitle:
                 fulltitle = fulltitle.split(" /", 1)[0]
             scrapedtitle = "%s (%s)" % (fulltitle, year)
@@ -274,13 +274,13 @@ def findvideos(item):
         item.infoLabels['plot'] = plot
 
     if filtro_enlaces != 0:
-        list_enlaces = bloque_enlaces(data, filtro_idioma, dict_idiomas, "Ver en línea", item)
+        list_enlaces = bloque_enlaces(data, filtro_idioma, dict_idiomas, "online", item)
         if list_enlaces:
             itemlist.append(item.clone(action="", title="Enlaces Online", text_color=color1,
                                        text_blod=True))
             itemlist.extend(list_enlaces)
     if filtro_enlaces != 1:
-        list_enlaces = bloque_enlaces(data, filtro_idioma, dict_idiomas, "Descarga", item)
+        list_enlaces = bloque_enlaces(data, filtro_idioma, dict_idiomas, "descarga", item)
         if list_enlaces:
             itemlist.append(item.clone(action="", title="Enlaces Descarga", text_color=color1,
                                        text_blod=True))
@@ -306,37 +306,44 @@ def findvideos(item):
 def bloque_enlaces(data, filtro_idioma, dict_idiomas, type, item):
     logger.info()
     lista_enlaces = []
-    data = data.replace("\n","")
     matches = []
-    if type == "Ver en línea":
-        patron = 'play-box-iframe.*?src.*?>([^<]+)<.*?<.*?src="([^"]+)'
-        bloques = scrapertools.find_multiple_matches(data, patron)
-        for language, url in bloques:
+    if type == "online"  : t_tipo = "Ver Online"
+    if type == "descarga": t_tipo = "Descargar"
+    data = data.replace("\n","")
+    if type == "online":
+        patron  = '(?is)#(option-[^"]+).*?png">([^<]+)'
+        match = scrapertools.find_multiple_matches(data, patron)
+        for scrapedoption, language in match:
+            patron = '(?s)id="' + scrapedoption +'".*?metaframe.*?lazy-src="([^"]+)'
+            url = scrapertools.find_single_match(data, patron)
             if "goo.gl" in url:
                 url = httptools.downloadpage(url, follow_redirects=False, only_headers=True).headers.get("location","")
             server = servertools.get_server_from_url(url)
-            matches.append([server, url, "Ver en línea",  "", language])
+            matches.append([url, server, "", language.strip(), t_tipo])
     bloque2 = scrapertools.find_single_match(data, '(?s)box_links.*?dt_social_single')
     bloque2 = bloque2.replace("\t","").replace("\r","")
-    patron  = '(?s)domain=([^"]+)"'
-    patron += '.*?href="([^"]+)'
-    patron += '.*?_blank">([^<]+)'
-    patron += '.*?src="[^"]+".*?>([^<]+)'
-    patron += '.*?src="[^"]+".*?>([^<]+)'
+    patron  = '(?s)optn" href="([^"]+)'
+    patron += '.*?title="([^"]+)'
+    patron += '.*?src.*?src="[^>]+"\s/>([^<]+)'
+    patron += '.*?src="[^>]+"\s/>([^<]+)'
+    patron += '.*?/span>([^<]+)'
     matches.extend(scrapertools.find_multiple_matches(bloque2, patron))
     filtrados = []
     for match in matches:
-        if type.upper() not in match[2].upper():
+        scrapedurl = match[0]
+        scrapedserver = match[1]
+        scrapedcalidad = match[2]
+        scrapedlanguage = match[3]
+        scrapedtipo = match[4]
+        if t_tipo.upper() not in scrapedtipo.upper():
             continue
-        scrapedurl = match[1]
-        language = match[4]
-        title = "   Mirror en " + match[0].split(".")[0] + " (" + language + ")"
-        if len(match[3].strip()) > 0:
-            title += " (Calidad " + match[3].strip() + ")"
+        title = "   Mirror en " + scrapedserver.split(".")[0] + " (" + scrapedlanguage + ")"
+        if len(scrapedcalidad.strip()) > 0:
+            title += " (Calidad " + scrapedcalidad.strip() + ")"
 
         if filtro_idioma == 3 or item.filtro:
             lista_enlaces.append(item.clone(title=title, action="play", text_color=color2,
-                                            url=scrapedurl, server=match[1], idioma=language, extra=item.url))
+                                            url=scrapedurl, server=scrapedserver, idioma=scrapedlanguage, extra=item.url))
         else:
             idioma = dict_idiomas[language]
             if idioma == filtro_idioma:
@@ -357,46 +364,40 @@ def play(item):
     logger.info()
     itemlist = []
     video_urls = []
-    urls = []
     if "api.cinetux" in item.url:
         data = httptools.downloadpage(item.url, headers={'Referer': item.extra}).data.replace("\\", "")
         id = scrapertools.find_single_match(data, 'img src="[^#]+#(.*?)"')
-
-        doc_url = "http://docs.google.com/get_video_info?docid=" + id
-        response = httptools.downloadpage(doc_url, cookies=False)
-        cookies = ""
-        cookie = response.headers["set-cookie"].split("HttpOnly, ")
-        for c in cookie:
-            cookies += c.split(";", 1)[0] + "; "
-
-        data = response.data.decode('unicode-escape')
-        data = urllib.unquote_plus(urllib.unquote_plus(data))
-        headers_string = "|Cookie=" + cookies
-
-        url_streams = scrapertools.find_single_match(data, 'url_encoded_fmt_stream_map=(.*)')
-        streams = scrapertools.find_multiple_matches(url_streams,
-                                                 'itag=(\d+)&url=(.*?)(?:;.*?quality=.*?(?:,|&)|&quality=.*?(?:,|&))')
-
-        itags = {'18':'360p', '22':'720p', '34':'360p', '35':'480p', '37':'1080p', '43':'360p', '59':'480p'}
-        for itag, video_url in streams:
-            if not video_url in urls:
-                video_url += headers_string
-                video_urls.append([video_url, itags[itag]])
-                urls.append(video_url)
-        
-        video_urls.sort(key=lambda video_urls: int(video_urls[1].replace("p", "")))
-        for v in video_urls:
-            itemlist.append([v[1], v[0]])
+        return ytApiVideoInfo(id)
     elif "links" in item.url:
-        data = httptools.downloadpage(item.url).data
-        scrapedurl = scrapertools.find_single_match(data, '<a href="(http[^"]+)')
-        if scrapedurl == "":
-            scrapedurl = scrapertools.find_single_match(data, '<frame src="(http[^"]+)')
-        if "goo.gl" in scrapedurl:
-            scrapedurl = httptools.downloadpage(scrapedurl, follow_redirects=False, only_headers=True).headers.get("location", "")
-        item.url = scrapedurl
-        item.server = servertools.get_server_from_url(scrapedurl)
+        item.url = httptools.downloadpage(item.url, follow_redirects=False, only_headers=True).headers.get("location", "")
+        item.server = servertools.get_server_from_url(item.url)
         return [item]
     else:
         return [item]
     return itemlist
+
+def ytApiVideoInfo(url_id):
+    video_urls = []
+    urls = []
+    if url_id.startswith("http"):
+        url_id = scrapertools.find_single_match(url_id, "docid=(\w+)")
+    doc_url = "http://docs.google.com/get_video_info?docid=" + url_id
+    response = httptools.downloadpage(doc_url, cookies=False,  headers={"Referer": doc_url})
+    cookies = ""
+    cookie = response.headers["set-cookie"].split("HttpOnly, ")
+    for c in cookie:
+        cookies += c.split(";", 1)[0] + "; "
+    data = response.data.decode('unicode-escape')
+    data = urllib.unquote_plus(urllib.unquote_plus(data))
+    headers_string = "|Cookie=" + cookies
+    url_streams = scrapertools.find_single_match(data, 'url_encoded_fmt_stream_map=(.*)')
+    streams = scrapertools.find_multiple_matches(url_streams,
+                                             'itag=(\d+)&url=(.*?)(?:;.*?quality=.*?(?:,|&)|&quality=.*?(?:,|&))')
+    itags = {'18':'360p', '22':'720p', '34':'360p', '35':'480p', '37':'1080p', '43':'360p', '59':'480p'}
+    for itag, video_url in streams:
+        if not video_url in urls:
+            video_url += headers_string
+            video_urls.append([itags[itag], video_url])
+            urls.append(video_url)
+    video_urls.sort(key=lambda video_urls: int(video_urls[0].replace("p", "")))
+    return video_urls
