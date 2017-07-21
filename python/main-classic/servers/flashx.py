@@ -77,14 +77,14 @@ def get_video_url(page_url, premium=False, user="", password="", video_password=
         wait_time = scrapertools.find_single_match(data, "<span id='xxc2'>(\d+)")
 
         file_id = scrapertools.find_single_match(data, "'file_id', '([^']+)'")
-        coding_url = 'https://files.fx.fastcontentdelivery.com/jquery2.js?fx=%s' % base64.encodestring(file_id)
-        headers['Host'] = "files.fx.fastcontentdelivery.com"
+        #coding_url = 'https://files.fx.fastcontentdelivery.com/jquery2.js?fx=%s' % base64.encodestring(file_id)
+        #headers['Host'] = "files.fx.fastcontentdelivery.com"
         headers['Referer'] = "https://www.flashx.tv/"
         headers['Accept'] = "*/*"
-        coding = httptools.downloadpage(coding_url, headers=headers, replace_headers=True).data
+        #coding = httptools.downloadpage(coding_url, headers=headers, replace_headers=True).data
         coding_url = 'https://www.flashx.tv/counter.cgi?fx=%s' % base64.encodestring(file_id)
         headers['Host'] = "www.flashx.tv"
-        coding = httptools.downloadpage(coding_url, headers=headers, replace_headers=True).data
+        #coding = httptools.downloadpage(coding_url, headers=headers, replace_headers=True).data
 
         coding_url = 'https://www.flashx.tv/flashx.php?fxfx=3'
         headers['X-Requested-With'] = 'XMLHttpRequest'
