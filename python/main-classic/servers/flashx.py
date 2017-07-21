@@ -82,7 +82,6 @@ def get_video_url(page_url, premium=False, user="", password="", video_password=
         headers['Referer'] = "https://www.flashx.tv/"
         headers['Accept'] = "*/*"
         coding = httptools.downloadpage(coding_url, headers=headers, replace_headers=True).data
-
         coding_url = 'https://www.flashx.tv/counter.cgi?fx=%s' % base64.encodestring(file_id)
         headers['Host'] = "www.flashx.tv"
         coding = httptools.downloadpage(coding_url, headers=headers, replace_headers=True).data
@@ -99,7 +98,6 @@ def get_video_url(page_url, premium=False, user="", password="", video_password=
         headers.pop('X-Requested-With')
         headers['Content-Type'] = 'application/x-www-form-urlencoded'
         data = httptools.downloadpage('https://www.flashx.tv/dl?playthis', post, headers, replace_headers=True).data
-
         matches = scrapertools.find_multiple_matches(data, "(eval\(function\(p,a,c,k.*?)\s+</script>")
         for match in matches:
             if match.startswith("eval"):
@@ -119,7 +117,8 @@ def get_video_url(page_url, premium=False, user="", password="", video_password=
     # Extrae la URL
     # {file:"http://f11-play.flashx.tv/luq4gfc7gxixexzw6v4lhz4xqslgqmqku7gxjf4bk43u4qvwzsadrjsozxoa/video1.mp4"}
     video_urls = []
-    media_urls = scrapertools.find_multiple_matches(match, '\{file\:"([^"]+)",label:"([^"]+)"')
+    match = match.replace("\\","").replace('\"',"\'")
+    media_urls = scrapertools.find_multiple_matches(match, "{src:'([^']+)'.*?,label:'([^']+)'")
     subtitle = ""
     for media_url, label in media_urls:
         if media_url.endswith(".srt") and label == "Spanish":
