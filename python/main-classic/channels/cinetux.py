@@ -314,7 +314,7 @@ def bloque_enlaces(data, filtro_idioma, dict_idiomas, type, item):
         patron  = '(?is)#(option-[^"]+).*?png">([^<]+)'
         match = scrapertools.find_multiple_matches(data, patron)
         for scrapedoption, language in match:
-            patron = '(?s)id="' + scrapedoption +'".*?metaframe.*?lazy-src="([^"]+)'
+            patron = '(?s)id="' + scrapedoption +'".*?metaframe.*?src="([^"]+)'
             url = scrapertools.find_single_match(data, patron)
             if "goo.gl" in url:
                 url = httptools.downloadpage(url, follow_redirects=False, only_headers=True).headers.get("location","")
@@ -369,9 +369,14 @@ def play(item):
         id = scrapertools.find_single_match(data, 'img src="[^#]+#(.*?)"')
         return ytApiVideoInfo(id)
     elif "links" in item.url:
-        item.url = httptools.downloadpage(item.url, follow_redirects=False, only_headers=True).headers.get("location", "")
-        item.server = servertools.get_server_from_url(item.url)
-        return [item]
+        data = httptools.downloadpage(item.url).data
+        scrapedurl = scrapertools.find_single_match(data, '<a href="(http[^"]+)')
+        if scrapedurl == "":
+            scrapedurl = scrapertools.find_single_match(data, '(?i)<frame src="(http[^"]+)')
+        if "goo.gl" in scrapedurl:
+            scrapedurl = httptools.downloadpage(scrapedurl, follow_redirects=False, only_headers=True).headers.get("location", "")
+        item.url = scrapedurl
+        itemlist = servertools.find_video_items(data = item.url)
     else:
         return [item]
     return itemlist
