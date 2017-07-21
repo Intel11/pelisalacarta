@@ -16,9 +16,8 @@ from lib import jsunpack
 def test_video_exists(page_url):
     logger.info("(page_url='%s')" % page_url)
     response = httptools.downloadpage(page_url)
-    if not response.sucess:
+    if not response.sucess or "File was deleted or expired" in response.data:
         return False, "[Vidzi] El archivo no existe o ha sido borrado"
-
     return True, ""
 
 
