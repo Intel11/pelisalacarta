@@ -311,11 +311,17 @@ def bloque_enlaces(data, filtro_idioma, dict_idiomas, type, item):
     if type == "descarga": t_tipo = "Descargar"
     data = data.replace("\n","")
     if type == "online":
-        patron  = '(?is)#(option-[^"]+).*?png">([^<]+)'
+        patron = '(?is)class="playex.*?visualizaciones'
+        bloque1 = scrapertools.find_single_match(data, patron)
+        patron = '(?is)#(option-[^"]+).*?png">([^<]+)'
         match = scrapertools.find_multiple_matches(data, patron)
         for scrapedoption, language in match:
-            patron = '(?s)id="' + scrapedoption +'".*?metaframe.*?src="([^"]+)'
-            url = scrapertools.find_single_match(data, patron)
+            lazy = ""
+            if "lazy" in bloque1:
+                lazy = "lazy-"
+            patron = '(?s)id="%s".*?metaframe.*?%ssrc="([^"]+)' %(scrapedoption, lazy)
+            #logger.info("Intel22 %s" %patron)
+            url = scrapertools.find_single_match(bloque1, patron)
             if "goo.gl" in url:
                 url = httptools.downloadpage(url, follow_redirects=False, only_headers=True).headers.get("location","")
             server = servertools.get_server_from_url(url)
