@@ -190,7 +190,7 @@ def destacadas(item):
     data = httptools.downloadpage(item.url).data
 
     # Extrae las entradas (carpetas)
-    bloque = scrapertools.find_single_match(data, "peliculas_destacadas.*?login_box")
+    bloque = scrapertools.find_single_match(data, 'peliculas_destacadas.*?class="single-page')
     patron  = '(?s)title="([^"]+)"'
     patron += '.href="([^"]+)"'
     patron += '.*?src="([^"]+)'
@@ -373,7 +373,8 @@ def play(item):
     if "api.cinetux" in item.url:
         data = httptools.downloadpage(item.url, headers={'Referer': item.extra}).data.replace("\\", "")
         id = scrapertools.find_single_match(data, 'img src="[^#]+#(.*?)"')
-        return ytApiVideoInfo(id)
+        item.url = "https://youtube.googleapis.com/embed/?status=ok&hl=es&allow_embed=1&ps=docs&partnerid=30&hd=1&autoplay=0&cc_load_policy=1&showinfo=0&docid=" + id
+        itemlist = servertools.find_video_items(data = item.url)
     elif "links" in item.url:
         data = httptools.downloadpage(item.url).data
         scrapedurl = scrapertools.find_single_match(data, '<a href="(http[^"]+)')
@@ -386,29 +387,3 @@ def play(item):
     else:
         return [item]
     return itemlist
-
-def ytApiVideoInfo(url_id):
-    video_urls = []
-    urls = []
-    if url_id.startswith("http"):
-        url_id = scrapertools.find_single_match(url_id, "docid=(\w+)")
-    doc_url = "http://docs.google.com/get_video_info?docid=" + url_id
-    response = httptools.downloadpage(doc_url, cookies=False,  headers={"Referer": doc_url})
-    cookies = ""
-    cookie = response.headers["set-cookie"].split("HttpOnly, ")
-    for c in cookie:
-        cookies += c.split(";", 1)[0] + "; "
-    data = response.data.decode('unicode-escape')
-    data = urllib.unquote_plus(urllib.unquote_plus(data))
-    headers_string = "|Cookie=" + cookies
-    url_streams = scrapertools.find_single_match(data, 'url_encoded_fmt_stream_map=(.*)')
-    streams = scrapertools.find_multiple_matches(url_streams,
-                                             'itag=(\d+)&url=(.*?)(?:;.*?quality=.*?(?:,|&)|&quality=.*?(?:,|&))')
-    itags = {'18':'360p', '22':'720p', '34':'360p', '35':'480p', '37':'1080p', '43':'360p', '59':'480p'}
-    for itag, video_url in streams:
-        if not video_url in urls:
-            video_url += headers_string
-            video_urls.append([itags[itag], video_url])
-            urls.append(video_url)
-    video_urls.sort(key=lambda video_urls: int(video_urls[0].replace("p", "")))
-    return video_urls
