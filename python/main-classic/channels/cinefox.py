@@ -666,12 +666,18 @@ def get_enlaces(item, url, type):
     data = httptools.downloadpage(url, add_referer=True).data
     if type == "Online":
         gg = httptools.downloadpage(item.url, add_referer=True).data
-        google_url = scrapertools.find_single_match(gg, '(?s)(https://youtube.googleapis.com.*?[^"])"')
-        google_cal = scrapertools.find_single_match(gg, '(?s)i class="l[^"]+.*?i>([^<]+)')
-        titulo = ""
-        if google_cal != "":
-           titulo = " [%s]" %google_cal
-        if google_url != "":
+        bloque = scrapertools.find_single_match(gg, 'class="tab".*?button show')
+        patron  = 'a href="#([^"]+)'
+        patron += '.*?language-ES-medium ([^"]+)'
+        patron += '.*?</i>([^<]+)'
+        matches = scrapertools.find_multiple_matches(bloque, patron)
+        for scrapedopcion, scrapedlanguage, scrapedcalidad in matches:
+            google_url = scrapertools.find_single_match(bloque, 'id="%s.*?src="([^"]+)' %scrapedopcion)
+            if "medium-es" in scrapedlanguage: language = "Castellano"
+            if "medium-en" in scrapedlanguage: language = "Ingles"
+            if "medium-vs" in scrapedlanguage: language = "VOSE"
+            if "medium-la" in scrapedlanguage: language = "Latino"
+            titulo = " [%s/%s]" %(language, scrapedcalidad.strip())
             itemlist.append(item.clone(action="play", url=google_url, title="    Ver en Gvideo"+titulo, text_color=color2, extra="", server = "gvideo"))
     patron = '<div class="available-source".*?data-url="([^"]+)".*?class="language.*?title="([^"]+)"' \
              '.*?class="source-name.*?>\s*([^<]+)<.*?<span class="quality-text">([^<]+)<'
