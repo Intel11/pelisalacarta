@@ -150,7 +150,7 @@ def peliculas(item):
                  contentQuality=quality, contentTitle=contentTitle))
 
     # Extrae el paginador
-    next_page = scrapertools.find_single_match(data,'<span class="pnext"><a href="([^"]+)')
+    next_page = scrapertools.find_single_match(data,'<span class="pnext".*?<a href="([^"]+)')
     if next_page:
         itemlist.append(Item(channel=item.channel, action="peliculas", title=">> Página siguiente",
                              thumbnail=thumbnail_host, url=next_page))
